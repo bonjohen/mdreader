@@ -139,8 +139,17 @@ window.MdReader.ui = (function () {
         prevWasBlock = false;
         var len = node.textContent.length;
         if (accumulated + len > charOffset) {
-          var el = node.parentElement;
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          // Find the nearest block-level ancestor and scroll it to the top
+          // of #preview by setting scrollTop directly.
+          var target = node.parentElement;
+          while (target && target !== preview && !BLOCK_TAGS.test(target.tagName)) {
+            target = target.parentElement;
+          }
+          if (!target || target === preview) target = node.parentElement;
+          if (target) {
+            var top = target.offsetTop - preview.offsetTop;
+            preview.scrollTo({ top: top, behavior: "smooth" });
+          }
           return;
         }
         accumulated += len;
