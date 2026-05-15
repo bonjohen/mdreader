@@ -7,12 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 No build tools or package managers. Serve the project root with any static file server:
 
 ```bash
-python -m http.server 8000
+python -m http.server 4336
 # or
-npx serve .
+npx serve . --listen tcp://0.0.0.0:4336
 ```
 
-Open `http://localhost:8000`. There are no tests or linters.
+Open `http://localhost:4336`. Port 4336 is reserved for mdreader in the global port registry. There are no tests or linters.
 
 ## Architecture
 

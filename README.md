@@ -77,13 +77,13 @@ Serve the project with any static file server:
 
 ```bash
 # Python
-python -m http.server 8000
+python -m http.server 4336
 
 # Node
-npx serve .
+npx serve . --listen tcp://0.0.0.0:4336
 ```
 
-Then open `http://localhost:8000` in your browser.
+Then open `http://localhost:4336` in your browser.
 
 ## Deployment
 
