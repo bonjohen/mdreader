@@ -80,11 +80,67 @@ window.MdReader.files = (function () {
         ui.elements.editor.value = text;
         window.MdReader.markdown.renderToPreview();
         ui.setEditorTitle("Pasted Text");
+        saveItem(text);
         ui.setStatus("Pasted " + text.length + " characters from clipboard.");
       })
       .catch(function (err) {
         ui.setStatus("Failed to read clipboard: " + (err && err.message ? err.message : err));
       });
+  }
+
+  // --- Saved items (localStorage persistence) ---
+
+  var SAVED_KEY = "mdreader-saved";
+  var SAVED_MAX = 50;
+
+  function getSavedItems() {
+    try {
+      return JSON.parse(localStorage.getItem(SAVED_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveItem(text) {
+    var lines = text.split(/\r?\n/);
+    var name = "";
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/^#+\s*/, "").trim();
+      if (line) { name = line; break; }
+    }
+    if (!name) name = text.slice(0, 60);
+    if (name.length > 60) name = name.slice(0, 57) + "...";
+
+    var entry = { id: Date.now(), name: name, text: text, ts: new Date().toISOString() };
+    var items = getSavedItems();
+    items.unshift(entry);
+    if (items.length > SAVED_MAX) items = items.slice(0, SAVED_MAX);
+    try {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+    } catch (e) {
+      window.MdReader.ui.setStatus("Could not save: storage full.");
+    }
+    return entry;
+  }
+
+  function deleteItem(id) {
+    var items = getSavedItems().filter(function (e) { return e.id !== id; });
+    localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+  }
+
+  function downloadItem(entry) {
+    var filename = entry.name.replace(/[^a-zA-Z0-9_\- ]/g, "").trim() || "document";
+    if (!/\.md$/i.test(filename)) filename += ".md";
+    var blob = new Blob([entry.text], { type: "text/markdown;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    window.MdReader.ui.setStatus("Downloaded: " + filename);
   }
 
   // --- Folder support ---
@@ -310,5 +366,9 @@ window.MdReader.files = (function () {
     advanceToNext,
     getCurrentIndex,
     getPlaylistLength,
+    getSavedItems,
+    saveItem,
+    deleteItem,
+    downloadItem,
   };
 })();

@@ -28,6 +28,44 @@ window.MdReader = window.MdReader || {};
   // Playlist sidebar close
   el.playlistCloseBtn.addEventListener("click", ui.hidePlaylistPanel);
 
+  // Saved items panel
+  function refreshSavedList() {
+    ui.showSavedItems(files.getSavedItems(), {
+      onOpen: function (entry) {
+        el.editor.value = entry.text;
+        md.renderToPreview();
+        ui.setEditorTitle(entry.name);
+        ui.setStatus("Opened: " + entry.name);
+      },
+      onDelete: function (entry) {
+        files.deleteItem(entry.id);
+        refreshSavedList();
+        ui.setStatus("Deleted: " + entry.name);
+      },
+      onDownload: function (entry) {
+        files.downloadItem(entry);
+      },
+    });
+  }
+  el.savedBtn.addEventListener("click", function () {
+    var panel = el.playlistPanel;
+    if (!panel.classList.contains("hidden")) {
+      // Panel already open — toggle it off if on saved tab, switch if on playlist tab
+      if (el.tabSaved.classList.contains("active")) {
+        ui.hidePlaylistPanel();
+        return;
+      }
+    }
+    panel.classList.remove("hidden");
+    ui.switchPanelTab("saved");
+    refreshSavedList();
+  });
+  el.tabPlaylist.addEventListener("click", function () { ui.switchPanelTab("playlist"); });
+  el.tabSaved.addEventListener("click", function () {
+    ui.switchPanelTab("saved");
+    refreshSavedList();
+  });
+
   // TTS controls
   el.speakBtn.addEventListener("click", function () {
     tts.speak();

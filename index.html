@@ -27,6 +27,7 @@
   <div class="group">
     <button id="pasteBtn">Paste</button>
     <button id="loadBtn">Load...</button>
+    <button id="savedBtn">Saved</button>
   </div>
 
   <div class="group">
@@ -62,10 +63,15 @@
   <!-- Playlist sidebar (hidden by default) -->
   <aside id="playlistPanel" class="hidden">
     <div class="playlist-header">
-      <span class="playlist-title">Playlist</span>
+      <span class="playlist-title">Library</span>
       <button id="playlistCloseBtn" class="playlist-close">&times;</button>
     </div>
+    <div class="panel-tabs">
+      <button id="tabPlaylist" class="tab active">Playlist</button>
+      <button id="tabSaved" class="tab">Saved</button>
+    </div>
     <div id="playlistList"></div>
+    <div id="savedList" class="hidden"></div>
   </aside>
 
   <main>

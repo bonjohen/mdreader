@@ -3,6 +3,7 @@ window.MdReader = window.MdReader || {};
 window.MdReader.tts = (function () {
   var voices = [];
   var chunkQueue = [];
+  var chunkMeta = []; // [{text, offset}] — tracks each chunk's position in original text
   var chunkIndex = 0;
   var totalChunks = 0;
   var sectionOffsets = []; // precomputed paragraph/heading boundaries for skip
@@ -142,40 +143,74 @@ window.MdReader.tts = (function () {
     return offsets;
   }
 
-  function chunkText(text) {
-    if (text.length <= CHUNK_MAX) return [text];
+  // Splits text into chunks for TTS, tracking each chunk's start offset in the
+  // original text.  Returns [{text, offset}].  The offset is the character
+  // position in `text` where that chunk begins, so skip-navigation can map
+  // between section boundaries and chunk indices without drift.
+  function chunkTextWithOffsets(text) {
+    if (text.length <= CHUNK_MAX) return [{ text: text, offset: 0 }];
 
-    var chunks = [];
-    // Split on sentence boundaries first
-    var sentences = text.split(/(?<=[.!?])\s+/);
+    // Split on sentence boundaries while preserving each sentence's position
+    // in the original text.
+    var sentenceRe = /(?<=[.!?])\s+/g;
+    var sentences = []; // [{text, offset}]
+    var lastEnd = 0;
+    var m;
+    while ((m = sentenceRe.exec(text)) !== null) {
+      sentences.push({ text: text.slice(lastEnd, m.index), offset: lastEnd });
+      lastEnd = m.index + m[0].length;
+    }
+    if (lastEnd < text.length) {
+      sentences.push({ text: text.slice(lastEnd), offset: lastEnd });
+    }
+
+    var result = [];
     var current = "";
+    var currentOffset = sentences.length ? sentences[0].offset : 0;
 
     for (var i = 0; i < sentences.length; i++) {
       var s = sentences[i];
-      if (current.length + s.length + 1 <= CHUNK_MAX) {
-        current = current ? current + " " + s : s;
+      if (current.length + s.text.length + 1 <= CHUNK_MAX) {
+        current = current ? current + " " + s.text : s.text;
+        if (current === s.text) currentOffset = s.offset;
       } else {
-        if (current) chunks.push(current);
-        // If single sentence exceeds max, split at commas or words
-        if (s.length > CHUNK_MAX) {
-          var parts = s.split(/,\s*/);
+        if (current) result.push({ text: current, offset: currentOffset });
+        if (s.text.length > CHUNK_MAX) {
+          // Sub-split oversized sentence at commas
+          var commaRe = /,\s*/g;
+          var parts = []; // [{text, offset}]
+          var partStart = 0;
+          var cm;
+          while ((cm = commaRe.exec(s.text)) !== null) {
+            parts.push({ text: s.text.slice(partStart, cm.index), offset: s.offset + partStart });
+            partStart = cm.index + cm[0].length;
+          }
+          if (partStart < s.text.length) {
+            parts.push({ text: s.text.slice(partStart), offset: s.offset + partStart });
+          }
+
           var sub = "";
+          var subOffset = parts.length ? parts[0].offset : s.offset;
           for (var j = 0; j < parts.length; j++) {
-            if (sub.length + parts[j].length + 2 <= CHUNK_MAX) {
-              sub = sub ? sub + ", " + parts[j] : parts[j];
+            if (sub.length + parts[j].text.length + 2 <= CHUNK_MAX) {
+              sub = sub ? sub + ", " + parts[j].text : parts[j].text;
+              if (sub === parts[j].text) subOffset = parts[j].offset;
             } else {
-              if (sub) chunks.push(sub);
-              sub = parts[j];
+              if (sub) result.push({ text: sub, offset: subOffset });
+              sub = parts[j].text;
+              subOffset = parts[j].offset;
             }
           }
           current = sub;
+          currentOffset = subOffset;
         } else {
-          current = s;
+          current = s.text;
+          currentOffset = s.offset;
         }
       }
     }
-    if (current) chunks.push(current);
-    return chunks;
+    if (current) result.push({ text: current, offset: currentOffset });
+    return result;
   }
 
   // --- Screen wake lock ---
@@ -247,6 +282,7 @@ window.MdReader.tts = (function () {
     stopKeepAlive();
     releaseWakeLock();
     chunkQueue = [];
+    chunkMeta = [];
     sectionOffsets = [];
     chunkIndex = 0;
     totalChunks = 0;
@@ -267,6 +303,9 @@ window.MdReader.tts = (function () {
     }
 
     var text = chunkQueue[chunkIndex];
+    if (chunkMeta.length) {
+      ui.scrollPreviewToOffset(chunkMeta[chunkIndex].offset);
+    }
     var utterance = new SpeechSynthesisUtterance(text);
 
     var voice = voices[Number(ui.elements.voiceSelect.value)];
@@ -320,7 +359,8 @@ window.MdReader.tts = (function () {
     stopSpeech();
     savePreferences();
 
-    chunkQueue = chunkText(text);
+    chunkMeta = chunkTextWithOffsets(text);
+    chunkQueue = chunkMeta.map(function (c) { return c.text; });
     sectionOffsets = computeSections(text);
     chunkIndex = 0;
     totalChunks = chunkQueue.length;
@@ -382,20 +422,15 @@ window.MdReader.tts = (function () {
   }
 
   function currentCharOffset() {
-    var offset = 0;
-    for (var i = 0; i < chunkIndex; i++) {
-      offset += chunkQueue[i].length;
-    }
-    return offset;
+    if (!chunkMeta.length || chunkIndex >= chunkMeta.length) return Infinity;
+    return chunkMeta[chunkIndex].offset;
   }
 
   function chunkIndexForCharOffset(target) {
-    var offset = 0;
-    for (var i = 0; i < chunkQueue.length; i++) {
-      if (offset + chunkQueue[i].length > target) return i;
-      offset += chunkQueue[i].length;
+    for (var i = chunkMeta.length - 1; i >= 0; i--) {
+      if (chunkMeta[i].offset <= target) return i;
     }
-    return chunkQueue.length - 1;
+    return 0;
   }
 
   function skipForward() {

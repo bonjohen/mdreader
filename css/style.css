@@ -320,6 +320,110 @@ textarea {
 }
 
 
+/* --- Panel tabs --- */
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-tabs .tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.panel-tabs .tab:hover {
+  color: var(--text);
+}
+
+.panel-tabs .tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* --- Saved items --- */
+
+#savedList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+#savedList.hidden {
+  display: none;
+}
+
+.saved-empty {
+  padding: 16px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.saved-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 14px;
+  border-left: 3px solid transparent;
+  transition: background 0.15s;
+}
+
+.saved-item:hover {
+  background: var(--panel2);
+}
+
+.saved-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saved-name {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.saved-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.saved-action {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.saved-action:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 /* --- Book dialog --- */
 
 #bookDialog {
